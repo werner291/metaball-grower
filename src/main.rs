@@ -4,9 +4,7 @@ use sdl2::event::Event;
 use sdl2::gfx::primitives::DrawRenderer;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
-use ncollide3d::shape::Ball;
 use ncollide3d::query::{RayCast, Ray};
-use nalgebra::geometry::Translation;
 use ncollide3d::bounding_volume::BoundingSphere;
 use ncollide3d::math::Isometry;
 
@@ -53,15 +51,43 @@ impl MetaballShape {
     pub fn raycast(&self, ray: Ray<f64>) -> Option<Point3<f64>> {
         // let ball = Ball::new(1.0);
 
-        let intersecting_balls : Vec<(f64,&Metaball)> = self.points.iter().filter_map(|pt| {
+        let mut intersecting_balls : Vec<(f64,&Metaball)> = self.points.iter().filter_map(|pt| {
             BoundingSphere::new(pt.pos, 1.0).toi_with_ray(&Isometry::identity(), &ray, true).map(|toi| (toi, pt))
         }).collect();
 
-        (0..100).map(|i| ray.origin + 0.05 * f64::from(i) * ray.dir)
-            .find(|ray_pt| {
-                let s : f64 = intersecting_balls.iter().map(|(_,p)| p.influence(ray_pt)).sum();
-                s > 0.5
-            })
+        intersecting_balls.sort_by(|(a,_),(b,_)| a.partial_cmp(&b).expect("No NaNs expected."));
+
+        if intersecting_balls.is_empty() {
+            return None;
+        }
+
+        let mut from = 0;
+        let mut to = 1;
+        let mut t = intersecting_balls[0].0;
+
+        while from < intersecting_balls.len() {
+
+            while to < intersecting_balls.len() && t > intersecting_balls[to-1].0 {
+                to += 1;
+            }
+
+            t += 0.05;
+
+            let ray_pt = ray.origin + t * ray.dir;
+            
+            let value : f64 = intersecting_balls[from..to].iter().map(|(_,p)| p.influence(&ray_pt)).sum();
+
+            if value > 0.5 {
+
+                return Some(ray_pt);
+            }
+
+            while from < intersecting_balls.len() && t > intersecting_balls[from].0 + 1.0 {
+                from += 1;
+            }
+        }
+        
+        None
     }
 }
 
