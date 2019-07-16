@@ -46,16 +46,22 @@ impl MetaballShape {
         self.points.iter().fold(Vector3::new(0.0,0.0,0.0), |g, p| g + p.gradient(pt) * p.influence(pt)).normalize()
     }
 
+    fn extent_min(&self, dim: usize) -> f64 {
+        self.points.iter().map(|pt| pt.pos[dim])
+            .min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) - 1.0
+    }
+
+     fn extent_max(&self, dim: usize) -> f64 {
+        self.points.iter().map(|pt| pt.pos[dim])
+            .max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) + 1.0
+    }
+
     pub fn cubify(&self, min_size: f64) -> Vec<AABB<f64>> {
 
         self.cubify_bounded(
             &AABB::new(
-                Point3::new(self.points.iter().map(|pt| pt.pos[0]).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) - 1.0,
-                            self.points.iter().map(|pt| pt.pos[1]).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) - 1.0,
-                            self.points.iter().map(|pt| pt.pos[2]).min_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) - 1.0),
-                Point3::new(self.points.iter().map(|pt| pt.pos[0]).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) + 1.0,
-                            self.points.iter().map(|pt| pt.pos[1]).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) + 1.0,
-                            self.points.iter().map(|pt| pt.pos[2]).max_by(|a,b| a.partial_cmp(b).unwrap()).unwrap_or(0.0) + 1.0)),
+                Point3::new(self.extent_min(0), self.extent_min(1), self.extent_min(2)),
+                Point3::new(self.extent_max(0), self.extent_max(1), self.extent_max(2))),
             min_size)
     }
 
